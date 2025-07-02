@@ -24,3 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
 });
+
+
+Route::apiResource('materials', \App\Http\Controllers\Api\MaterialController::class)
+    ->middleware('auth:sanctum');
