@@ -19,6 +19,7 @@ return new class extends Migration
     $table->timestamp('email_verified_at')->nullable();
     $table->string('password');
     $table->string('phone', 20)->nullable();
+    $table->enum('role', ['buyer', 'seller'])->default('buyer');
     $table->text('address')->nullable();
     $table->string('city', 50)->nullable();
     $table->string('state', 50)->nullable();
