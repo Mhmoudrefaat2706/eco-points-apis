@@ -20,7 +20,7 @@ public function up(): void
         $table->enum('price_unit', ['piece', 'kg', 'm²', 'm³']);
         $table->string('image_url', 255)->nullable();
         $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
-        $table->timestamp('created_at')->useCurrent();
+        $table->timestamps();
     });
 }
 

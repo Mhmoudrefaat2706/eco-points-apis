@@ -27,6 +27,6 @@ Schema::create('feedback', function (Blueprint $table) {
 
     public function down(): void
     {
-        Schema::dropIfExists('reviews');
+        Schema::dropIfExists('feedback');
     }
 };

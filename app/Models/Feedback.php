@@ -5,7 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Feedback extends Model
 {
-    protected $table = 'feadback';
+
+    protected $table = 'feedback';
     public $timestamps = false;
 
     protected $fillable = [
@@ -21,4 +22,5 @@ class Feedback extends Model
     {
         return $this->belongsTo(User::class, 'buyer_id');
     }
+
 }

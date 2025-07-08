@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
-class SellerController extends Controller
+class SellerProfileController extends Controller
 {
     public function profile($id)
     {

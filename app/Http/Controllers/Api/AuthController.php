@@ -7,11 +7,13 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
 {
 
-public function register(Request $request): JsonResponse
+public function register(Request $request)
+
 {
     $validator = Validator::make($request->all(), [
         'first_name' => 'required|string|max:50',
