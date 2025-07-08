@@ -35,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/{id}', [MaterialController::class, 'update']);
     Route::delete('/{id}', [MaterialController::class, 'destroy']);
     Route::get('/latest', [MaterialController::class, 'latest']);
+    Route::get('/details/{id}', [MaterialController::class, 'show']);
     });
 
 });

@@ -10,16 +10,18 @@ use Illuminate\Support\Facades\Auth;
 class MaterialController extends Controller
 {
     //  Get all materials
+
     public function index()
     {
-        return response()->json(Material::all());
+        $materials = Material::paginate(8);
+        return response()->json($materials);
     }
 
     //  Get materials for logged-in seller
     public function myMaterials()
     {
         $sellerId = Auth::id();
-        $materials = Material::where('seller_id', $sellerId)->get();
+        $materials = Material::where('seller_id', $sellerId)->paginate(8);
         return response()->json($materials);
     }
 
@@ -87,6 +89,22 @@ class MaterialController extends Controller
         $material->delete();
 
         return response()->json(['message' => 'Material deleted']);
+    }
+
+    //  Get material details by ID
+    public function show($id)
+    {
+        $material = Material::find($id);
+
+        if (!$material) {
+            return response()->json([
+                'message' => 'Material not found.'
+            ], 404);
+        }
+
+        return response()->json([
+            'material' => $material
+        ], 200);
     }
 
     //  Get latest 6 materials
