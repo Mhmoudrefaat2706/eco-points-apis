@@ -11,19 +11,50 @@ class MaterialController extends Controller
 {
     //  Get all materials
 
-    public function index()
-    {
-        $materials = Material::paginate(8);
-        return response()->json($materials);
+   public function index(Request $request)
+{
+    $query = Material::query();
+
+    // search by name
+    if ($request->has('search') && $request->search !== null) {
+        $query->where('name', 'like', '%' . $request->search . '%');
     }
 
-    //  Get materials for logged-in seller
-    public function myMaterials()
-    {
-        $sellerId = Auth::id();
-        $materials = Material::where('seller_id', $sellerId)->paginate(8);
-        return response()->json($materials);
+    // search by category
+    if ($request->has('category') && $request->category !== null) {
+        $query->where('category', $request->category);
     }
+
+    // pagination
+    $materials = $query->paginate(8);
+
+    return response()->json($materials);
+}
+
+
+    //  Get materials for logged-in seller
+  public function myMaterials(Request $request)
+{
+    $sellerId = Auth::id();
+
+    $query = Material::where('seller_id', $sellerId);
+
+    //search by name
+    if ($request->has('search') && $request->search !== null) {
+        $query->where('name', 'like', '%' . $request->search . '%');
+    }
+
+    // search by category
+    if ($request->has('category') && $request->category !== null) {
+        $query->where('category', $request->category);
+    }
+
+    // pagination
+    $materials = $query->paginate(8);
+
+    return response()->json($materials);
+}
+
 
     //  Add new material (only seller)
     public function store(Request $request)
