@@ -13,10 +13,9 @@ return new class extends Migration
     {
 Schema::create('feedback', function (Blueprint $table) {
     $table->id();
-    $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
     $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
     $table->foreignId('buyer_id')->constrained('users')->onDelete('cascade');
-    $table->tinyInteger('rating')->unsigned(); 
+    $table->tinyInteger('rating')->unsigned();
     $table->text('comment')->nullable();
     $table->timestamps();
 });

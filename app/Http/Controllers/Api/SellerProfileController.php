@@ -10,15 +10,14 @@ use Illuminate\Support\Facades\Validator;
 
 class SellerProfileController extends Controller
 {
-    public function profile($id)
-    {
-        $user = User::findOrFail($id);
-        return response()->json($user);
-    }
-
-public function update(Request $request, $id)
+  public function profile()
 {
-    $seller = User::findOrFail($id);
+    $user = auth()->user();
+    return response()->json($user);
+}
+public function update(Request $request)
+{
+    $seller = auth()->user();
 
     $validator = Validator::make($request->all(), [
         'first_name' => 'required|string|max:50',
@@ -28,9 +27,6 @@ public function update(Request $request, $id)
         'state' => 'nullable|string|max:50',
         'postal_code' => 'nullable|string|max:20',
         'country' => 'nullable|string|max:50',
-    ], [
-        'first_name.required' => 'First name is required.',
-        'last_name.required' => 'Last name is required.'
     ]);
 
     if ($validator->fails()) {
@@ -49,7 +45,8 @@ public function update(Request $request, $id)
         'status' => true,
         'message' => 'Profile updated successfully.',
         'user' => $seller
-    ], 200);
+    ]);
 }
+
 
 }

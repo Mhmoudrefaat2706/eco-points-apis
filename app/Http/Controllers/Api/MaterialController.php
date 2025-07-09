@@ -33,27 +33,29 @@ class MaterialController extends Controller
 
 
     //  Get materials for logged-in seller
-  public function myMaterials(Request $request)
+public function myMaterials(Request $request)
 {
     $sellerId = Auth::id();
+    // Check if the user is a seller
+    if (Auth::user()->role !== 'seller') {
+        return response()->json(['message' => 'Only sellers can view their materials'], 403);
+    }
 
     $query = Material::where('seller_id', $sellerId);
-
-    //search by name
-    if ($request->has('search') && $request->search !== null) {
+    // Apply search and category filters if provided
+    if ($request->filled('search')) {
         $query->where('name', 'like', '%' . $request->search . '%');
     }
 
-    // search by category
-    if ($request->has('category') && $request->category !== null) {
+    if ($request->filled('category')) {
         $query->where('category', $request->category);
     }
 
-    // pagination
     $materials = $query->paginate(8);
 
     return response()->json($materials);
 }
+
 
 
     //  Add new material (only seller)

@@ -4,28 +4,31 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Feedback;
+use App\Models\Material;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class FeedbackController extends Controller
 {
-    //  Add new feedback
+    //  Add feedback based on material (but only store seller_id)
     public function store(Request $request)
     {
         if (Auth::user()->role !== 'buyer') {
-    return response()->json(['message' => 'Only buyers can submit feedback'], 403);
-}
+            return response()->json(['message' => 'Only buyers can submit feedback'], 403);
+        }
 
         $request->validate([
             'material_id' => 'required|exists:materials,id',
-            'seller_id' => 'required|exists:users,id',
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string',
         ]);
 
+        // Get seller from material
+        $material = Material::findOrFail($request->material_id);
+        $seller_id = $material->seller_id;
+
         $feedback = Feedback::create([
-            'material_id' => $request->material_id,
-            'seller_id' => $request->seller_id,
+            'seller_id' => $seller_id,
             'buyer_id' => Auth::id(),
             'rating' => $request->rating,
             'comment' => $request->comment,
@@ -33,7 +36,8 @@ class FeedbackController extends Controller
 
         return response()->json(['message' => 'Feedback added', 'data' => $feedback], 201);
     }
-    //  Get feedback for specific seller
+
+    //  Show all feedbacks for specific seller (from material view)
     public function getSellerFeedback($seller_id)
     {
         $feedbacks = Feedback::with('buyer')
@@ -44,7 +48,22 @@ class FeedbackController extends Controller
         return response()->json($feedbacks);
     }
 
-    //  Update feedback (only by buyer who created it)
+    //  Show feedbacks for the logged-in seller
+    public function myFeedbacks()
+    {
+        if (Auth::user()->role !== 'seller') {
+            return response()->json(['message' => 'Only sellers can view their feedback'], 403);
+        }
+
+        $feedbacks = Feedback::with('buyer')
+            ->where('seller_id', Auth::id())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($feedbacks);
+    }
+
+    //  Update feedback (only by the buyer who created it)
     public function update(Request $request, $id)
     {
         $feedback = Feedback::findOrFail($id);
@@ -66,7 +85,7 @@ class FeedbackController extends Controller
         return response()->json(['message' => 'Feedback updated', 'data' => $feedback]);
     }
 
-    //  Delete feedback (only by buyer who created it)
+    //  Delete feedback (only by the buyer who created it)
     public function destroy($id)
     {
         $feedback = Feedback::findOrFail($id);

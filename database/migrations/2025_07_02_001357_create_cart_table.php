@@ -16,7 +16,7 @@ public function up(): void
         $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
         $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
         $table->integer('quantity');
-        $table->timestamp('added_at')->useCurrent();
+        $table->timestamps();
     });
 }
 
