@@ -13,6 +13,7 @@ class Material extends Model
         'price',
         'price_unit',
         'image_url',
+        'quantity',
         'seller_id'
     ];
 

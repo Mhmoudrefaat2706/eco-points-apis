@@ -43,5 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/latest', [MaterialController::class, 'latest']);
         Route::get('/details/{id}', [MaterialController::class, 'show']);
     });
-
+    // Cart routes
+    Route::prefix('cart')->group(function () {
+        Route::post('/add', [CartController::class, 'addToCart']);
+        Route::delete('/remove/{id}', [CartController::class, 'removeFromCart']);
+        Route::delete('/clear', [CartController::class, 'clearCart']);
+        Route::get('/', [CartController::class, 'viewCart']);
+    });
 });

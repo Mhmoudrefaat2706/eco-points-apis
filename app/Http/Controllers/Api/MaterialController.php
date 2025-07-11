@@ -9,56 +9,49 @@ use Illuminate\Support\Facades\Auth;
 
 class MaterialController extends Controller
 {
-    //  Get all materials
+    // 🔹 Get all materials
+    public function index(Request $request)
+    {
+        $query = Material::query();
 
-   public function index(Request $request)
-{
-    $query = Material::query();
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
 
-    // search by name
-    if ($request->has('search') && $request->search !== null) {
-        $query->where('name', 'like', '%' . $request->search . '%');
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        $materials = $query->paginate(8);
+
+        return response()->json($materials);
     }
 
-    // search by category
-    if ($request->has('category') && $request->category !== null) {
-        $query->where('category', $request->category);
+    // 🔹 Get materials for logged-in seller
+    public function myMaterials(Request $request)
+    {
+        $sellerId = Auth::id();
+
+        if (Auth::user()->role !== 'seller') {
+            return response()->json(['message' => 'Only sellers can view their materials'], 403);
+        }
+
+        $query = Material::where('seller_id', $sellerId);
+
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        $materials = $query->paginate(8);
+
+        return response()->json($materials);
     }
 
-    // pagination
-    $materials = $query->paginate(8);
-
-    return response()->json($materials);
-}
-
-
-    //  Get materials for logged-in seller
-public function myMaterials(Request $request)
-{
-    $sellerId = Auth::id();
-    // Check if the user is a seller
-    if (Auth::user()->role !== 'seller') {
-        return response()->json(['message' => 'Only sellers can view their materials'], 403);
-    }
-
-    $query = Material::where('seller_id', $sellerId);
-    // Apply search and category filters if provided
-    if ($request->filled('search')) {
-        $query->where('name', 'like', '%' . $request->search . '%');
-    }
-
-    if ($request->filled('category')) {
-        $query->where('category', $request->category);
-    }
-
-    $materials = $query->paginate(8);
-
-    return response()->json($materials);
-}
-
-
-
-    //  Add new material (only seller)
+    // 🔹 Add new material (only seller)
     public function store(Request $request)
     {
         if (Auth::user()->role !== 'seller') {
@@ -72,6 +65,7 @@ public function myMaterials(Request $request)
             'price' => 'required|numeric|min:0',
             'price_unit' => 'required|string|max:20',
             'image_url' => 'nullable|url',
+            'quantity' => 'nullable|integer|min:0' // ✅ الكمية اختيارية
         ]);
 
         $material = Material::create([
@@ -81,13 +75,14 @@ public function myMaterials(Request $request)
             'price' => $request->price,
             'price_unit' => $request->price_unit,
             'image_url' => $request->image_url,
+            'quantity' => $request->quantity ?? 1, // ✅ القيمة الافتراضية
             'seller_id' => Auth::id(),
         ]);
 
         return response()->json(['message' => 'Material added', 'data' => $material], 201);
     }
 
-    // Update material (only by owner seller)
+    // 🔹 Update material (only by owner seller)
     public function update(Request $request, $id)
     {
         $material = Material::findOrFail($id);
@@ -103,6 +98,7 @@ public function myMaterials(Request $request)
             'price' => 'sometimes|required|numeric|min:0',
             'price_unit' => 'sometimes|required|string|max:20',
             'image_url' => 'nullable|url',
+            'quantity' => 'sometimes|required|integer|min:0' // ✅ الكمية هنا
         ]);
 
         $material->update($request->all());
@@ -110,7 +106,7 @@ public function myMaterials(Request $request)
         return response()->json(['message' => 'Material updated', 'data' => $material]);
     }
 
-    //  Delete material (only by owner seller)
+    // 🔹 Delete material (only by owner seller)
     public function destroy($id)
     {
         $material = Material::findOrFail($id);
@@ -124,23 +120,19 @@ public function myMaterials(Request $request)
         return response()->json(['message' => 'Material deleted']);
     }
 
-    //  Get material details by ID
+    // 🔹 Get material details by ID
     public function show($id)
     {
         $material = Material::find($id);
 
         if (!$material) {
-            return response()->json([
-                'message' => 'Material not found.'
-            ], 404);
+            return response()->json(['message' => 'Material not found.'], 404);
         }
 
-        return response()->json([
-            'material' => $material
-        ], 200);
+        return response()->json(['material' => $material], 200);
     }
 
-    //  Get latest 6 materials
+    // 🔹 Get latest 6 materials
     public function latest()
     {
         $latest = Material::latest()->take(6)->get();
