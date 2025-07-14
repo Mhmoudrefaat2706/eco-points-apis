@@ -27,6 +27,8 @@ public function update(Request $request)
         'state' => 'nullable|string|max:50',
         'postal_code' => 'nullable|string|max:20',
         'country' => 'nullable|string|max:50',
+        'paypal_client_id' => 'nullable|string|max:255',
+        'paypal_client_secret' => 'nullable|string|max:255',
     ]);
 
     if ($validator->fails()) {
@@ -38,7 +40,8 @@ public function update(Request $request)
     }
 
     $seller->update($request->only([
-        'first_name', 'last_name', 'address', 'city', 'state', 'postal_code', 'country'
+        'first_name', 'last_name', 'address', 'city', 'state',
+        'postal_code', 'country', 'paypal_client_id', 'paypal_client_secret'
     ]));
 
     return response()->json([

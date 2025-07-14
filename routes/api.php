@@ -7,56 +7,79 @@ use App\Http\Controllers\Api\SellerProfileController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\MaterialController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\API\PayPalController;
 
+/*------------------------------------------
+| Public Routes (No Authentication Required)
+-------------------------------------------*/
 
-// Public routes (no authentication required)
+// Authentication
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// Public material routes
+// Materials
 Route::prefix('materials')->group(function () {
-    Route::get('/', [MaterialController::class, 'index']); // List all materials
-    Route::get('/latest', [MaterialController::class, 'latest']); // Get latest materials
-    Route::get('/details/{id}', [MaterialController::class, 'show']); // Get material details
+    Route::get('/', [MaterialController::class, 'index']);
+    Route::get('/latest', [MaterialController::class, 'latest']);
+    Route::get('/details/{id}', [MaterialController::class, 'show']);
 });
 
-Route::get('/categories', [MaterialController::class, 'getCategories']); // Get all categories
+// Categories
+Route::get('/categories', [MaterialController::class, 'getCategories']);
 
-// Public feedback routes
+// Feedback
 Route::prefix('feedback')->group(function () {
-    Route::get('/seller/{seller_id}', [FeedbackController::class, 'getSellerFeedback']); // View feedback for seller
+    Route::get('/seller/{seller_id}', [FeedbackController::class, 'getSellerFeedback']);
 });
 
-// Protected routes (require authentication)
+// PayPal
+Route::get('/paypal/success', [PayPalController::class, 'success'])->name('paypal.success');
+Route::get('/paypal/cancel', [PayPalController::class, 'cancel'])->name('paypal.cancel');
+
+/*------------------------------------------
+| Protected Routes (Authentication Required)
+-------------------------------------------*/
 Route::middleware('auth:sanctum')->group(function () {
-    // User routes
+    // Authentication
+    Route::post('/logout', [AuthController::class, 'logout']);
+    
+    // User
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-    Route::post('/logout', [AuthController::class, 'logout']);
-    
-    // Profile routes
+
+    // Profile
     Route::prefix('user/profile')->group(function () {
         Route::get('/', [SellerProfileController::class, 'profile']);
         Route::put('/', [SellerProfileController::class, 'update']);
     });
 
-    // Protected material routes
+    // Materials
     Route::prefix('materials')->group(function () {
-        Route::get('/my-materials', [MaterialController::class, 'myMaterials']); // Get seller's materials
-        Route::post('/', [MaterialController::class, 'store']); // Add new material
-        Route::put('/{id}', [MaterialController::class, 'update']); // Update material
-        Route::delete('/{id}', [MaterialController::class, 'destroy']); // Delete material
+        Route::get('/my-materials', [MaterialController::class, 'myMaterials']);
+        Route::post('/', [MaterialController::class, 'store']);
+        Route::put('/{id}', [MaterialController::class, 'update']);
+        Route::delete('/{id}', [MaterialController::class, 'destroy']);
+        Route::post('/upload-image', [MaterialController::class, 'uploadImage']);
     });
 
-    // Protected feedback routes
+    // Feedback
     Route::prefix('feedback')->group(function () {
-        Route::post('/', [FeedbackController::class, 'store']); // Add feedback
-        Route::get('/seller-logged-in', [FeedbackController::class, 'myFeedbacks']); // View logged-in seller's feedback
-        Route::put('/{id}', [FeedbackController::class, 'update']); // Update feedback
-        Route::delete('/{id}', [FeedbackController::class, 'destroy']); // Delete feedback
+        Route::post('/', [FeedbackController::class, 'store']);
+        Route::get('/seller-logged-in', [FeedbackController::class, 'myFeedbacks']);
+        Route::put('/{id}', [FeedbackController::class, 'update']);
+        Route::delete('/{id}', [FeedbackController::class, 'destroy']);
     });
 
-    // Image upload
-    Route::post('/upload-image', [MaterialController::class, 'uploadImage']);
+    // Cart
+    Route::prefix('cart')->group(function () {
+        Route::post('/add', [CartController::class, 'addToCart']);
+        Route::delete('/remove/{id}', [CartController::class, 'removeFromCart']);
+        Route::delete('/clear', [CartController::class, 'clearCart']);
+        Route::get('/', [CartController::class, 'viewCart']);
+    });
+
+    // PayPal
+    Route::post('/paypal/create-order', [PayPalController::class, 'createOrder']);
+    Route::post('/paypal/capture-order', [PayPalController::class, 'captureOrder']);
 });

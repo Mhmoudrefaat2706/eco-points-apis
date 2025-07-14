@@ -16,7 +16,8 @@ class Material extends Model
         'price',
         'price_unit',
         'image_url',
-        'seller_id',
+        'quantity',
+        'seller_id'
     ];
 
     protected $casts = [

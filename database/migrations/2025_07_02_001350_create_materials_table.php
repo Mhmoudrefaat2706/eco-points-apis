@@ -17,6 +17,7 @@ public function up(): void
         $table->text('description')->nullable();
         $table->decimal('price', 10, 2);
         $table->enum('price_unit', ['piece', 'kg', 'm²', 'm³']);
+        $table->integer('quantity')->default(1);
         $table->string('image_url', 255)->nullable();
         $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
         $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
