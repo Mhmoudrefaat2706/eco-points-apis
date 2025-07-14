@@ -64,9 +64,15 @@ class MaterialController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'price_unit' => 'required|string|max:20',
-            'image_url' => 'nullable|url',
-            'quantity' => 'nullable|integer|min:0' // ✅ الكمية اختيارية
+            'image_url' => 'nullable|string',
+            'quantity' => 'nullable|integer|min:0'
         ]);
+
+        $imageUrl = null;
+        if ($request->filled('image_url')) {
+            
+            $imageUrl = url('images/' . $request->image_url);
+        }
 
         $material = Material::create([
             'name' => $request->name,
@@ -74,8 +80,8 @@ class MaterialController extends Controller
             'description' => $request->description,
             'price' => $request->price,
             'price_unit' => $request->price_unit,
-            'image_url' => $request->image_url,
-            'quantity' => $request->quantity ?? 1, // ✅ القيمة الافتراضية
+            'image_url' => $imageUrl,
+            'quantity' => $request->quantity ?? 1,
             'seller_id' => Auth::id(),
         ]);
 
@@ -98,7 +104,7 @@ class MaterialController extends Controller
             'price' => 'sometimes|required|numeric|min:0',
             'price_unit' => 'sometimes|required|string|max:20',
             'image_url' => 'nullable|url',
-            'quantity' => 'sometimes|required|integer|min:0' // ✅ الكمية هنا
+            'quantity' => 'sometimes|required|integer|min:0'
         ]);
 
         $material->update($request->all());

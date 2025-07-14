@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\SellerProfileController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\MaterialController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\API\PayPalController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -50,4 +51,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/clear', [CartController::class, 'clearCart']);
         Route::get('/', [CartController::class, 'viewCart']);
     });
+
+    Route::post('/paypal/create-order', [PayPalController::class, 'createOrder']);
+    Route::post('/paypal/capture-order', [PayPalController::class, 'captureOrder']);
+
 });
+Route::get('/paypal/success', [PayPalController::class, 'success'])->name('paypal.success');
+Route::get('/paypal/cancel', [PayPalController::class, 'cancel'])->name('paypal.cancel');
