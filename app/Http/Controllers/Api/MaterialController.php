@@ -4,90 +4,113 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Material;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class MaterialController extends Controller
 {
-    //  Get all materials
-
-   public function index(Request $request)
-{
-    $query = Material::query();
-
-    // search by name
-    if ($request->has('search') && $request->search !== null) {
-        $query->where('name', 'like', '%' . $request->search . '%');
-    }
-
-    // search by category
-    if ($request->has('category') && $request->category !== null) {
-        $query->where('category', $request->category);
-    }
-
-    // pagination
-    $materials = $query->paginate(8);
-
-    return response()->json($materials);
-}
-
-
-    //  Get materials for logged-in seller
-public function myMaterials(Request $request)
-{
-    $sellerId = Auth::id();
-    // Check if the user is a seller
-    if (Auth::user()->role !== 'seller') {
-        return response()->json(['message' => 'Only sellers can view their materials'], 403);
-    }
-
-    $query = Material::where('seller_id', $sellerId);
-    // Apply search and category filters if provided
-    if ($request->filled('search')) {
-        $query->where('name', 'like', '%' . $request->search . '%');
-    }
-
-    if ($request->filled('category')) {
-        $query->where('category', $request->category);
-    }
-
-    $materials = $query->paginate(8);
-
-    return response()->json($materials);
-}
-
-
-
-    //  Add new material (only seller)
-    public function store(Request $request)
+    //  Get all materials with relations
+    public function index(Request $request)
     {
-        if (Auth::user()->role !== 'seller') {
-            return response()->json(['message' => 'Only sellers can add materials'], 403);
+        $query = Material::with(['category', 'seller']); // Include relationships
+
+        if ($request->has('search') && $request->search !== null) {
+            $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'category' => 'required|string|max:100',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'price_unit' => 'required|string|max:20',
-            'image_url' => 'nullable|url',
-        ]);
+        if ($request->has('category') && $request->category !== null) {
+            // Handle both category name and ID
+            if (is_numeric($request->category)) {
+                $query->where('category_id', $request->category);
+            } else {
+                $query->whereHas('category', function ($q) use ($request) {
+                    $q->where('name', $request->category);
+                });
+            }
+        }
 
-        $material = Material::create([
-            'name' => $request->name,
-            'category' => $request->category,
-            'description' => $request->description,
-            'price' => $request->price,
-            'price_unit' => $request->price_unit,
-            'image_url' => $request->image_url,
-            'seller_id' => Auth::id(),
-        ]);
+        // Add price filters
+        if ($request->has('min_price') && $request->min_price !== null) {
+            $query->where('price', '>=', $request->min_price);
+        }
 
-        return response()->json(['message' => 'Material added', 'data' => $material], 201);
+        if ($request->has('max_price') && $request->max_price !== null) {
+            $query->where('price', '<=', $request->max_price);
+        }
+
+        $materials = $query->paginate(8);
+
+        return response()->json($materials);
     }
 
-    // Update material (only by owner seller)
+    //  Get materials for logged-in seller
+    public function myMaterials(Request $request)
+    {
+        $sellerId = Auth::id();
+        // Check if the user is a seller
+        if (Auth::user()->role !== 'seller') {
+            return response()->json(['message' => 'Only sellers can view their materials'], 403);
+        }
+
+        $query = Material::with(['category'])->where('seller_id', $sellerId);
+
+        // Apply search and category filters if provided
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->filled('category')) {
+            if (is_numeric($request->category)) {
+                $query->where('category_id', $request->category);
+            } else {
+                $query->whereHas('category', function ($q) use ($request) {
+                    $q->where('name', $request->category);
+                });
+            }
+        }
+
+        $materials = $query->paginate(8);
+
+        return response()->json($materials);
+    }
+
+    // Uncomment and use this version of store() (the second one)
+public function store(Request $request)
+{
+    if (Auth::user()->role !== 'seller') {
+        return response()->json(['message' => 'Only sellers can add materials'], 403);
+    }
+
+    $request->validate([
+        'name' => 'required|string|max:100',
+        'category_id' => 'required|exists:categories,id',
+        'description' => 'nullable|string',
+        'price' => 'required|numeric|min:0',
+        'price_unit' => 'required|string|in:piece,kg,m²,m³',
+        'image_url' => 'nullable|string', // Now expecting just filename
+    ]);
+
+    $material = Material::create([
+        'name' => $request->name,
+        'category_id' => $request->category_id,
+        'description' => $request->description,
+        'price' => $request->price,
+        'price_unit' => $request->price_unit,
+        'image_url' => $request->image_url, // Store just the filename
+        'seller_id' => Auth::id(),
+    ]);
+
+    $material->load('category');
+
+    return response()->json([
+        'message' => 'Material added',
+        'data' => $material
+    ], 201);
+}
+
+    // Update the update() method to use image_url consistently
     public function update(Request $request, $id)
     {
         $material = Material::findOrFail($id);
@@ -98,14 +121,16 @@ public function myMaterials(Request $request)
 
         $request->validate([
             'name' => 'sometimes|required|string|max:100',
-            'category' => 'sometimes|required|string|max:100',
+            'category_id' => 'sometimes|required|exists:categories,id',
             'description' => 'nullable|string',
             'price' => 'sometimes|required|numeric|min:0',
             'price_unit' => 'sometimes|required|string|max:20',
-            'image_url' => 'nullable|url',
+            'image_url' => 'nullable|string',
         ]);
 
         $material->update($request->all());
+
+        $material->load('category');
 
         return response()->json(['message' => 'Material updated', 'data' => $material]);
     }
@@ -127,7 +152,7 @@ public function myMaterials(Request $request)
     //  Get material details by ID
     public function show($id)
     {
-        $material = Material::find($id);
+        $material = Material::with(['category', 'seller'])->find($id);
 
         if (!$material) {
             return response()->json([
@@ -143,7 +168,27 @@ public function myMaterials(Request $request)
     //  Get latest 6 materials
     public function latest()
     {
-        $latest = Material::latest()->take(6)->get();
+        $latest = Material::with(['category', 'seller'])->latest()->take(6)->get();
         return response()->json($latest);
+    }
+
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
+        ]);
+
+        $path = $request->file('image')->store('public/materials');
+        $publicPath = str_replace('public/', '', $path);
+
+        return response()->json([
+            'path' => $publicPath,
+            'url' => asset("storage/$publicPath")
+        ]);
+    }
+
+    public function getCategories()
+    {
+        return response()->json(Category::all());
     }
 }
