@@ -38,7 +38,7 @@ class MaterialController extends Controller
             $query->where('price', '<=', $request->max_price);
         }
 
-        $materials = $query->paginate(8);
+        $materials = $query->orderBy('created_at', 'desc')->paginate(8);
         return response()->json($materials);
     }
 
@@ -47,6 +47,7 @@ class MaterialController extends Controller
     {
         $sellerId = Auth::id();
 
+        // Check if user is seller
         if (Auth::user()->role !== 'seller') {
             return response()->json(['message' => 'Only sellers can view their materials'], 403);
         }
@@ -67,12 +68,13 @@ class MaterialController extends Controller
             }
         }
 
-        $materials = $query->paginate(8);
+        $materials = $query->orderBy('created_at', 'desc')->paginate(8);
         return response()->json($materials);
     }
 
     public function store(Request $request)
     {
+        // Only sellers can add materials
         if (Auth::user()->role !== 'seller') {
             return response()->json(['message' => 'Only sellers can add materials'], 403);
         }
@@ -111,6 +113,7 @@ class MaterialController extends Controller
     {
         $material = Material::findOrFail($id);
 
+        // Authorization check
         if ($material->seller_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
@@ -136,6 +139,7 @@ class MaterialController extends Controller
     {
         $material = Material::findOrFail($id);
 
+        // Authorization check
         if ($material->seller_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
@@ -159,23 +163,47 @@ class MaterialController extends Controller
     // Get latest 6 materials
     public function latest()
     {
-        $latest = Material::with(['category', 'seller'])->latest()->take(6)->get();
+        $latest = Material::with(['category', 'seller'])
+            ->latest('created_at')
+            ->take(6)
+            ->get();
+
         return response()->json($latest);
     }
 
+    // Image upload with proper error handling
     public function uploadImage(Request $request)
     {
+        // Authorization - only sellers can upload
+        if (Auth::user()->role !== 'seller') {
+            return response()->json(['message' => 'Only sellers can upload images'], 403);
+        }
+
         $request->validate([
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048'
         ]);
 
-        $path = $request->file('image')->store('public/materials');
-        $publicPath = str_replace('public/', '', $path);
+        try {
+            // Create materials directory if not exists
+            $path = public_path('materials');
+            if (!file_exists($path)) {
+                mkdir($path, 0777, true);
+            }
 
-        return response()->json([
-            'path' => $publicPath,
-            'url' => asset("storage/$publicPath")
-        ]);
+            $file = $request->file('image');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+
+            // Move file to public/materials
+            $file->move($path, $filename);
+
+            return response()->json([
+                'filename' => $filename,
+                'url' => asset('materials/' . $filename)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function getCategories()
