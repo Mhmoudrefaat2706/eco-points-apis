@@ -17,7 +17,7 @@ public function up(): void
         $table->decimal('total_price', 10, 2);
         $table->decimal('shipping_cost', 10, 2)->default(0);
         $table->decimal('tax', 10, 2)->default(0);
-        $table->enum('status', ['pending', 'shipped', 'delivered', 'cancelled'])->default('pending');
+        $table->enum('status', ['pending', 'Rejected', 'approved', 'cancelled'])->default('pending');
         $table->timestamps();
         $table->date('estimated_delivery')->nullable();
     });

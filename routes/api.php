@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\MaterialController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\API\PayPalController;
-
+use App\Http\Controllers\Api\OrderController;
 /*------------------------------------------
 | Public Routes (No Authentication Required)
 -------------------------------------------*/
@@ -42,7 +42,7 @@ Route::get('/paypal/cancel', [PayPalController::class, 'cancel'])->name('paypal.
 Route::middleware('auth:sanctum')->group(function () {
     // Authentication
     Route::post('/logout', [AuthController::class, 'logout']);
-    
+
     // User
     Route::get('/user', function (Request $request) {
         return $request->user();
@@ -77,7 +77,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/remove/{id}', [CartController::class, 'removeFromCart']);
         Route::delete('/clear', [CartController::class, 'clearCart']);
         Route::get('/', [CartController::class, 'viewCart']);
+            Route::post('/checkout', [CartController::class, 'checkout']);
     });
+
+    Route::prefix('orders')->group(function () {
+    Route::get('/user', [OrderController::class, 'getUserOrders']);
+    Route::get('/seller', [OrderController::class, 'getSellerOrders']);
+    Route::put('/{id}/status', [OrderController::class, 'updateOrderStatus']);
+});
 
     // PayPal
     Route::post('/paypal/create-order', [PayPalController::class, 'createOrder']);

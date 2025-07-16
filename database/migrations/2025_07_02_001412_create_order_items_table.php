@@ -16,7 +16,7 @@ public function up(): void
         $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
         $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
         $table->integer('quantity');
-        $table->decimal('price_per_unit', 10, 2);
+        $table->decimal('price', 10, 2);
         $table->timestamps();
     });
 }
