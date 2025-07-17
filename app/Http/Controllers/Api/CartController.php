@@ -106,16 +106,19 @@ public function checkout(Request $request)
         $tax = $subtotal * $taxRate;
         $total = $subtotal + $shippingCost + $tax;
 
-        // Create order
-        $order = Order::create([
-            'user_id' => $user->id,
-            'total_price' => $total,
-            'shipping_cost' => $shippingCost,
-            'tax' => $tax,
-            'status' => 'pending',
-            'estimated_delivery' => now()->addDays(7),
-        ]);
 
+$firstSellerId = $cartItems->first()->material->seller_id;
+
+// Create order
+$order = Order::create([
+    'user_id' => $user->id,
+    'seller_id' => $firstSellerId,
+    'total_price' => $total,
+    'shipping_cost' => $shippingCost,
+    'tax' => $tax,
+    'status' => 'pending',
+    'estimated_delivery' => now()->addDays(7),
+]);
         // Create order items
         foreach ($cartItems as $cartItem) {
             OrderItem::create([
