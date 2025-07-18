@@ -14,7 +14,10 @@ class CartController extends Controller
 
 
 public function addToCart(Request $request)
+
 {
+
+
     $request->validate([
         'material_id' => 'required|exists:materials,id',
     ]);
@@ -138,7 +141,7 @@ public function checkout(Request $request)
                     'seller_id' => $sellerId,
                 ]);
 
-                // تحديث المخزون
+
                 $material = Material::find($item->material_id);
                 $material->quantity -= $item->quantity;
                 $material->save();

@@ -12,4 +12,5 @@ class Cart extends Model
     {
         return $this->belongsTo(Material::class);
     }
+    
 }
