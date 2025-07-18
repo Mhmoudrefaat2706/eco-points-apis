@@ -11,47 +11,61 @@ use App\Models\Order;
 
 class PayPalController extends Controller
 {
- public function createOrder(Request $request)
-{
-    $request->validate([
-        'order_id' => 'required|exists:orders,id',
-    ]);
 
-    $order = Order::find($request->order_id);
-    $seller = $order->items()->first()->material->user;
+    public function createOrder(Request $request)
+    {
+        $request->validate([
+            'order_id' => 'required|exists:orders,id',
+        ]);
 
-    if (!$seller->paypal_client_id || !$seller->paypal_client_secret) {
-        return response()->json(['error' => 'لم يتم العثور على بيانات PayPal الخاصة بالتاجر'], 422);
-    }
+        // 1. الحصول على الطلب مع علاقاته
+        $order = Order::with('items.material')->find($request->order_id);
 
-    $paypal = new PayPalService($seller->paypal_client_id, $seller->paypal_client_secret);
-
-    try {
-        $paypalOrder = $paypal->createOrder($order->total_price);
-
-        if (!empty($paypalOrder['id'])) {
-            Payment::create([
-                'user_id' => Auth::id(),
-                'order_id' => $order->id,
-                'paypal_order_id' => $paypalOrder['id'],
-                'amount' => $order->total_price,
-                'status' => 'pending',
-                'currency' => 'USD',
-            ]);
-
-            $approvalUrl = collect($paypalOrder['links'])->firstWhere('rel', 'approve')['href'] ?? null;
-
-            return response()->json([
-                'approval_url' => $approvalUrl
-            ]);
+        if (!$order) {
+            return response()->json(['error' => 'الطلب غير موجود'], 404);
         }
 
-        return response()->json(['error' => 'فشل في إنشاء طلب PayPal'], 500);
+        // 2. التأكد من وجود عناصر في الطلب
+        if ($order->items->isEmpty()) {
+            return response()->json(['error' => 'الطلب لا يحتوي على أي عناصر'], 422);
+        }
 
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()], 500);
+        // 3. الحصول على البائع من الطلب مباشرة
+        if (!$order->seller_id) {
+            return response()->json(['error' => 'لم يتم العثور على تاجر للطلب'], 422);
+        }
+
+        // 4. الحصول على بيانات البائع
+        $seller = User::find($order->seller_id);
+        if (!$seller) {
+            return response()->json(['error' => 'لم يتم العثور على بيانات التاجر'], 422);
+        }
+
+        // 5. التحقق من بيانات PayPal للتاجر
+        if (!$seller->paypal_client_id || !$seller->paypal_client_secret) {
+            return response()->json(['error' => 'لم يتم العثور على بيانات PayPal الخاصة بالتاجر'], 422);
+        }
+
+        // ... بقية كود PayPal
+        $paypal = new PayPalService($seller->paypal_client_id, $seller->paypal_client_secret);
+
+        try {
+            $response = $paypal->createOrder($order->total_price, 'USD');
+
+            // حفظ تفاصيل الدفع
+            Payment::create([
+                'user_id' => $order->user_id,
+                'order_id' => $order->id,
+                'paypal_order_id' => $response['id'],
+                'amount' => $order->total_price,
+                'status' => $response['status'],
+            ]);
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
-}
     public function captureOrder(Request $request)
     {
         $request->validate([
@@ -82,4 +96,35 @@ class PayPalController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+public function success(Request $request)
+{
+    $token = $request->query('token');
+    $payment = Payment::where('paypal_order_id', $token)->first();
+
+    if (!$payment) {
+        return response()->json(['error' => 'Payment not found'], 404);
+    }
+
+    $payment->status = 'completed';
+    $payment->save();
+
+    $order = Order::find($payment->order_id);
+    $order->status = 'paid';
+    $order->save();
+
+     return redirect(config('app.frontend_url') . '/my-orders?payment=success');
+}
+
+public function cancel(Request $request)
+{
+    $token = $request->query('token');
+    $payment = Payment::where('paypal_order_id', $token)->first();
+
+    if ($payment) {
+        $payment->status = 'cancelled';
+        $payment->save();
+    }
+    return redirect(config('app.frontend_url') . '/my-orders?payment=cancelled');
+}
 }

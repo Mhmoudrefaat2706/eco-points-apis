@@ -1,48 +1,80 @@
 <?php
+
 namespace App\Services;
 
-use Srmklive\PayPal\Services\PayPal as PayPalClient;
+use Illuminate\Support\Facades\Http;
 
 class PayPalService
 {
-    protected $provider;
+    private $clientId;
+    private $clientSecret;
+    private $baseUrl;
 
-    public function __construct($clientId, $clientSecret)
+    public function __construct($clientId, $clientSecret, $isSandbox = true)
     {
-        $this->provider = new PayPalClient;
+        $this->clientId = $clientId;
+        $this->clientSecret = $clientSecret;
+        $this->baseUrl = $isSandbox
+            ? 'https://api-m.sandbox.paypal.com'
+            : 'https://api-m.paypal.com';
+    }
 
-        $config = config('paypal');
+    public function getAccessToken()
+    {
+        $url = $this->baseUrl . '/v1/oauth2/token';
 
-        $config['mode'] = 'sandbox';
-        $config['sandbox']['client_id'] = $clientId;
-        $config['sandbox']['client_secret'] = $clientSecret;
+        $response = Http::withBasicAuth($this->clientId, $this->clientSecret)
+            ->asForm()
+            ->post($url, [
+                'grant_type' => 'client_credentials'
+            ]);
 
-        $this->provider->setApiCredentials($config);
-        $accessToken = $this->provider->getAccessToken();
-        $this->provider->setAccessToken($accessToken);
+        if ($response->successful()) {
+            return $response->json()['access_token'];
+        }
+
+        throw new \Exception('فشل الحصول على رمز الوصول PayPal: ' . $response->body());
     }
 
     public function createOrder($amount)
     {
-        return $this->provider->createOrder([
-            "intent" => "CAPTURE",
-            "application_context" => [
-                "return_url" => route('paypal.success'),
-                "cancel_url" => route('paypal.cancel'),
-            ],
-            "purchase_units" => [
-                [
-                    "amount" => [
-                        "currency_code" => "USD",
-                        "value" => $amount
-                    ]
+        $accessToken = $this->getAccessToken();
+
+        $url = $this->baseUrl . '/v2/checkout/orders';
+        $payload = [
+            'intent' => 'CAPTURE',
+            'purchase_units' => [[
+                'amount' => [
+                    'currency_code' => 'USD',
+                    'value' => number_format($amount, 2, '.', '')
                 ]
-            ]
-        ]);
+            ]]
+        ];
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $accessToken,
+            'PayPal-Request-Id' => uniqid() 
+        ])->post($url, $payload);
+
+        if ($response->successful()) {
+            return $response->json();
+        }
+
+        throw new \Exception('فشل إنشاء طلب PayPal: ' . $response->body());
     }
 
     public function capturePayment($orderId)
     {
-        return $this->provider->capturePaymentOrder($orderId);
+        $accessToken = $this->getAccessToken();
+        $url = $this->baseUrl . "/v2/checkout/orders/{$orderId}/capture";
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $accessToken,
+            'PayPal-Request-Id' => uniqid()
+        ])->post($url);
+
+        return $response->json();
     }
 }

@@ -23,8 +23,12 @@ public function addToCart(Request $request)
 
     $material = Material::find($request->material_id);
 
-    if (!$material) {
-        return response()->json(['message' => 'Material not found'], 404);
+    if (!$material->seller_id) {
+        return response()->json([
+            'message' => 'Material not associated with a seller',
+            'available_stock' => $material->quantity,
+            'material_id' => $material->id
+        ], 400);
     }
 
     $cartItem = Cart::where('user_id', $userId)
@@ -83,7 +87,6 @@ public function addToCart(Request $request)
         $cart = Cart::with('material')->where('user_id', Auth::id())->get();
         return response()->json($cart);
     }
-
 public function checkout(Request $request)
 {
     $user = Auth::user();
@@ -96,50 +99,60 @@ public function checkout(Request $request)
     DB::beginTransaction();
 
     try {
-        // Calculate order totals
-        $subtotal = $cartItems->sum(function ($item) {
-            return $item->material->price * $item->quantity;
-        });
 
-        $shippingCost = 5.00; // Fixed shipping cost
-        $taxRate = 0.14; // 14% tax
-        $tax = $subtotal * $taxRate;
-        $total = $subtotal + $shippingCost + $tax;
+        $groupedCartItems = $cartItems->groupBy('material.seller_id');
 
-        // Create order
-        $order = Order::create([
-            'user_id' => $user->id,
-            'total_price' => $total,
-            'shipping_cost' => $shippingCost,
-            'tax' => $tax,
-            'status' => 'pending',
-            'estimated_delivery' => now()->addDays(7),
-        ]);
 
-        // Create order items
-        foreach ($cartItems as $cartItem) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'material_id' => $cartItem->material_id,
-                'quantity' => $cartItem->quantity,
-                'price' => $cartItem->material->price,
+
+        foreach ($groupedCartItems as $sellerId => $items) {
+                        if (!$sellerId) {
+                throw new \Exception('One or more materials are missing seller_id');
+            }
+            $subtotal = $items->sum(function ($item) {
+                return $item->material->price * $item->quantity;
+            });
+
+            $shippingCost = 5.00;
+            $taxRate = 0.14;
+            $tax = $subtotal * $taxRate;
+            $total = $subtotal + $shippingCost + $tax;
+
+
+            $order = Order::create([
+                'user_id' => $user->id,
+                'seller_id' => $sellerId,
+                'total_price' => $total,
+                'shipping_cost' => $shippingCost,
+                'tax' => $tax,
+                'status' => 'pending',
+                'estimated_delivery' => now()->addDays(7),
             ]);
 
-            // Update material stock
-            $material = Material::find($cartItem->material_id);
-            $material->quantity -= $cartItem->quantity;
-            $material->save();
+
+            foreach ($items as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'material_id' => $item->material_id,
+                    'quantity' => $item->quantity,
+                    'price' => $item->material->price,
+                    'seller_id' => $sellerId,
+                ]);
+
+                
+                $material = Material::find($item->material_id);
+                $material->quantity -= $item->quantity;
+                $material->save();
+            }
+
+            $createdOrders[] = $order;
         }
 
-        // Clear cart
         Cart::where('user_id', $user->id)->delete();
-
         DB::commit();
 
         return response()->json([
-            'message' => 'Order created successfully',
-            'order_id' => $order->id,
-            'total' => $total
+            'message' => 'Orders created successfully',
+            'orders' => $createdOrders,
         ], 201);
 
     } catch (\Exception $e) {
@@ -147,7 +160,6 @@ public function checkout(Request $request)
         return response()->json(['message' => 'Checkout failed: ' . $e->getMessage()], 500);
     }
 }
-
 }
 
 

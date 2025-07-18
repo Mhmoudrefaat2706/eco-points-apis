@@ -11,16 +11,17 @@ return new class extends Migration
      */
 public function up(): void
 {
-    Schema::create('orders', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-        $table->decimal('total_price', 10, 2);
-        $table->decimal('shipping_cost', 10, 2)->default(0);
-        $table->decimal('tax', 10, 2)->default(0);
-        $table->enum('status', ['pending', 'Rejected', 'approved', 'cancelled'])->default('pending');
-        $table->timestamps();
-        $table->date('estimated_delivery')->nullable();
-    });
+        Schema::create('orders', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
+            $table->decimal('total_price', 10, 2);
+            $table->decimal('shipping_cost', 10, 2)->default(0);
+            $table->decimal('tax', 10, 2)->default(0);
+            $table->enum('status', ['pending', 'approved', 'rejected', 'cancelled'])->default('pending');
+            $table->timestamp('estimated_delivery')->nullable();
+            $table->timestamps();
+        });
 }
 
 public function down(): void
