@@ -16,6 +16,7 @@ class Payment extends Model
         'status',
         'amount',
         'currency',
+        'paypal_order_id'
     ];
 
     public function user()
