@@ -17,7 +17,12 @@ class Material extends Model
         'price_unit',
         'image_url',
         'quantity',
-        'seller_id'
+        'seller_id',
+        'status'
+    ];
+
+    protected $attributes = [
+        'status' => 'active'
     ];
 
     protected $casts = [
@@ -35,5 +40,4 @@ class Material extends Model
     {
         return $this->belongsTo(User::class, 'seller_id');
     }
-    
 }

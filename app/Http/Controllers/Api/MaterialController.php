@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\Storage;
 class MaterialController extends Controller
 {
     // Get all materials with relations
+    // In the index method, add status filtering:
     public function index(Request $request)
     {
-        $query = Material::with(['category', 'seller']);
+        $query = Material::with(['category', 'seller'])
+            ->where('status', 'active'); // Add this line
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -36,6 +38,10 @@ class MaterialController extends Controller
 
         if ($request->has('max_price') && $request->max_price !== null) {
             $query->where('price', '<=', $request->max_price);
+        }
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
         }
 
         $materials = $query->orderBy('created_at', 'desc')->paginate(8);
@@ -200,7 +206,6 @@ class MaterialController extends Controller
                 'filename' => $filename,
                 'url' => asset('materials/' . $filename)
             ]);
-
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
