@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
@@ -8,6 +9,7 @@ use App\Services\PayPalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Order;
+use Illuminate\Support\Facades\Log;
 
 class PayPalController extends Controller
 {
@@ -45,6 +47,7 @@ class PayPalController extends Controller
 
         try {
             $response = $paypal->createOrder($order->total_price, 'USD');
+            Log::info('PayPal response', $response);
 
             Payment::create([
                 'user_id' => $order->user_id,
@@ -53,6 +56,7 @@ class PayPalController extends Controller
                 'amount' => $order->total_price,
                 'status' => $response['status'],
             ]);
+            Log::info('PayPal response', $response);
 
             return response()->json([
                 'approval_url' => $this->findApprovalUrl($response['links'])
