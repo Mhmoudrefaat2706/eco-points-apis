@@ -18,6 +18,7 @@ public function up(): void
             $table->decimal('total_price', 10, 2);
             $table->decimal('shipping_cost', 10, 2)->default(0);
             $table->decimal('tax', 10, 2)->default(0);
+            $table->string('paypal_order_id')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected', 'cancelled'])->default('pending');
             $table->timestamp('estimated_delivery')->nullable();
             $table->timestamps();

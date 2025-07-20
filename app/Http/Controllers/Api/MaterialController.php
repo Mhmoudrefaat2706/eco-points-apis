@@ -78,41 +78,34 @@ class MaterialController extends Controller
         return response()->json($materials);
     }
 
-    public function store(Request $request)
-    {
-        // Only sellers can add materials
-        if (Auth::user()->role !== 'seller') {
-            return response()->json(['message' => 'Only sellers can add materials'], 403);
-        }
+ public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:100',
+        'category_id' => 'required|exists:categories,id',
+        'description' => 'nullable|string',
+        'price' => 'required|numeric|min:0',
+        'price_unit' => 'required|string|in:piece,kg,m²,m³',
+        'image_url' => 'nullable|string|max:255', // ← هنا التعديل
+    ]);
 
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'category_id' => 'required|exists:categories,id',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'price_unit' => 'required|string|in:piece,kg,m²,m³',
-            'image_url' => 'nullable|string',
-            'quantity' => 'nullable|integer|min:0'
-        ]);
+    $material = Material::create([
+        'name' => $request->name,
+        'category_id' => $request->category_id,
+        'description' => $request->description,
+        'price' => $request->price,
+        'price_unit' => $request->price_unit,
+        'image_url' => $request->image_url,
+        'quantity' => $request->quantity ?? 1,
+        'seller_id' => Auth::id(),
+    ]);
 
-        $material = Material::create([
-            'name' => $request->name,
-            'category_id' => $request->category_id,
-            'description' => $request->description,
-            'price' => $request->price,
-            'price_unit' => $request->price_unit,
-            'image_url' => $request->image_url,
-            'quantity' => $request->quantity ?? 1,
-            'seller_id' => Auth::id(),
-        ]);
+    return response()->json([
+        'message' => 'Material created successfully',
+        'material' => $material,
+    ]);
+}
 
-        $material->load('category');
-
-        return response()->json([
-            'message' => 'Material added',
-            'data' => $material
-        ], 201);
-    }
 
     // Update material (only by owner seller)
     public function update(Request $request, $id)

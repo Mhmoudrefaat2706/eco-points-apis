@@ -15,9 +15,9 @@ return new class extends Migration
         $table->id();
         $table->foreignId('user_id')->constrained()->onDelete('cascade');
         $table->string('order_id');
-        $table->string('payment_id')->nullable(); // بعد الكابتشر
-        $table->string('status')->default('pending'); // pending / completed / cancelled
-        $table->decimal('amount', 10, 2);
+        $table->string('paypal_order_id')->nullable();
+        $table->string('status')->default('pending');
+        $table->string('amount');
         $table->string('currency')->default('USD');
         $table->timestamps();
     });
