@@ -10,6 +10,8 @@ use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SellerOrderNotificationMail;
 
 class CartController extends Controller
 {
@@ -36,7 +38,6 @@ class CartController extends Controller
             ->first();
 
         if ($cartItem) {
-
             return response()->json([
                 'message' => 'Item already in cart',
                 'cart' => $cartItem,
@@ -86,6 +87,7 @@ class CartController extends Controller
         $cart = Cart::with('material')->where('user_id', Auth::id())->get();
         return response()->json($cart);
     }
+
     public function checkout(Request $request)
     {
         $user = Auth::user();
@@ -115,7 +117,6 @@ class CartController extends Controller
                 $taxRate = 0.14;
                 $subtotal = $material->price * $item->quantity;
                 $tax = $subtotal * $taxRate;
-                // $total = $subtotal + $shippingCost + $tax;
                 $total = $subtotal;
 
                 $order = Order::create([
@@ -140,6 +141,11 @@ class CartController extends Controller
                 $material->quantity -= $item->quantity;
                 $material->save();
 
+                // Send email to seller
+                if ($material->seller && $material->seller->email) {
+                    Mail::to($material->seller->email)->send(new SellerOrderNotificationMail($order));
+                }
+
                 $createdOrders[] = $order;
             }
 
@@ -149,7 +155,7 @@ class CartController extends Controller
             DB::commit();
 
             return response()->json([
-                'message' => 'Each item has been converted into a separate order',
+                'message' => 'Checkout completed successfully',
                 'orders' => $createdOrders,
             ], 201);
         } catch (\Exception $e) {
