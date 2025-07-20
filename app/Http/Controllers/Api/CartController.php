@@ -9,6 +9,9 @@ use App\Models\Material;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\SellerOrderNotificationMail;
+
 class CartController extends Controller
 {
 
@@ -93,75 +96,71 @@ public function addToCart(Request $request)
 public function checkout(Request $request)
 {
     $user = Auth::user();
+
     $cartItems = Cart::with('material')->where('user_id', $user->id)->get();
 
     if ($cartItems->isEmpty()) {
         return response()->json(['message' => 'Cart is empty'], 400);
     }
 
-    DB::beginTransaction();
+    $createdOrders = [];
 
-    try {
-        $createdOrders = [];
+    foreach ($cartItems as $item) {
+        $material = $item->material;
 
-        foreach ($cartItems as $item) {
-            $material = $item->material;
-
-            if (!$material || !$material->seller_id) {
-                throw new \Exception('Material not valid or missing seller_id');
-            }
-
-            if ($material->quantity < $item->quantity) {
-                throw new \Exception("Not enough stock for material: {$material->name}");
-            }
-
-            $shippingCost = 5.00;
-            $taxRate = 0.14;
-            $subtotal = $material->price * $item->quantity;
-            $tax = $subtotal * $taxRate;
-            // $total = $subtotal + $shippingCost + $tax;
-            $total = $subtotal;
-
-            $order = Order::create([
-                'user_id' => $user->id,
-                'seller_id' => $material->seller_id,
-                'total_price' => $total,
-                'shipping_cost' => $shippingCost,
-                'tax' => $tax,
-                'status' => 'pending',
-                'estimated_delivery' => now()->addDays(7),
-            ]);
-
-            OrderItem::create([
-                'order_id' => $order->id,
-                'material_id' => $material->id,
-                'quantity' => $item->quantity,
-                'price' => $material->price,
-                'seller_id' => $material->seller_id,
-            ]);
-
-            // Update material stock
-            $material->quantity -= $item->quantity;
-            $material->save();
-
-            $createdOrders[] = $order;
+        if (!$material || !$material->seller_id) {
+            throw new \Exception('Material not valid or missing seller_id');
         }
 
-        // Clear user cart after creating all orders
-        Cart::where('user_id', $user->id)->delete();
+        if ($material->quantity < $item->quantity) {
+            throw new \Exception("Not enough stock for material: {$material->name}");
+        }
 
-        DB::commit();
+        $shippingCost = 5.00;
+        $taxRate = 0.14;
+        $subtotal = $material->price * $item->quantity;
+        $tax = $subtotal * $taxRate;
+        $total = $subtotal;
 
-        return response()->json([
-            'message' => 'Each item has been converted into a separate order',
-            'orders' => $createdOrders,
-        ], 201);
+        $order = Order::create([
+            'user_id' => $user->id,
+            'seller_id' => $material->seller_id,
+            'total_price' => $total,
+            'shipping_cost' => $shippingCost,
+            'tax' => $tax,
+            'status' => 'pending',
+            'estimated_delivery' => now()->addDays(7),
+        ]);
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json(['message' => 'Checkout failed: ' . $e->getMessage()], 500);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'material_id' => $material->id,
+            'quantity' => $item->quantity,
+            'price' => $material->price,
+            'seller_id' => $material->seller_id,
+        ]);
+
+        // تحديث كمية المادة
+        $material->quantity -= $item->quantity;
+        $material->save();
+
+        // إرسال إيميل للتاجر
+        if ($material->seller && $material->seller->email) {
+            Mail::to($material->seller->email)->send(new SellerOrderNotificationMail($order));
+        }
+
+        $createdOrders[] = $order;
     }
+
+    // تفريغ السلة
+    Cart::where('user_id', $user->id)->delete();
+
+    return response()->json([
+        'message' => 'Checkout completed successfully',
+        'orders' => $createdOrders,
+    ]);
 }
+
 
 }
 
