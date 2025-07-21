@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\MaterialController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\API\PayPalController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\AdminController;
+
 /*------------------------------------------
 | Public Routes (No Authentication Required)
 -------------------------------------------*/
@@ -77,16 +79,43 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/remove/{id}', [CartController::class, 'removeFromCart']);
         Route::delete('/clear', [CartController::class, 'clearCart']);
         Route::get('/', [CartController::class, 'viewCart']);
-            Route::post('/checkout', [CartController::class, 'checkout']);
+        Route::post('/checkout', [CartController::class, 'checkout']);
     });
 
+    // Orders
     Route::prefix('orders')->group(function () {
-    Route::get('/user', [OrderController::class, 'getUserOrders']);
-    Route::get('/seller', [OrderController::class, 'getSellerOrders']);
-    Route::put('/{id}/status', [OrderController::class, 'updateOrderStatus']);
-});
+        Route::get('/user', [OrderController::class, 'getUserOrders']);
+        Route::get('/seller', [OrderController::class, 'getSellerOrders']);
+        Route::put('/{id}/status', [OrderController::class, 'updateOrderStatus']);
+    });
 
     // PayPal
     Route::post('/paypal/create-order', [PayPalController::class, 'createOrder']);
     Route::post('/paypal/capture-order', [PayPalController::class, 'captureOrder']);
+});
+
+/*------------------------------------------
+| Admin Routes (Authentication + Admin Role Required)
+-------------------------------------------*/
+Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+    // Dashboard statistics
+    Route::get('/dashboard', [AdminController::class, 'getDashboardStats']);
+
+    // Users management
+    Route::get('/users', [AdminController::class, 'getUsers']);
+    Route::post('/users', [AdminController::class, 'createUser']);
+    Route::put('/users/{id}/block', [AdminController::class, 'blockUser']);
+    Route::put('/users/{id}/unblock', [AdminController::class, 'unblockUser']);
+    Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
+
+    // Materials management
+    Route::get('/materials', [AdminController::class, 'getAllMaterials']);
+    Route::delete('/materials/{id}', [AdminController::class, 'deleteMaterial']);
+    Route::put('/materials/{id}/block', [AdminController::class, 'blockMaterial']);
+    Route::put('/materials/{id}/unblock', [AdminController::class, 'unblockMaterial']);
+    Route::put('/materials/{id}/status', [AdminController::class, 'updateMaterialStatus']);
+
+    // Feedback management
+    Route::get('/feedbacks', [AdminController::class, 'getAllFeedbacks']);
+    Route::delete('/feedbacks/{id}', [AdminController::class, 'deleteFeedback']);
 });

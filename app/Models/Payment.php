@@ -16,6 +16,7 @@ class Payment extends Model
         'status',
         'amount',
         'currency',
+        'paypal_order_id'
     ];
 
     public function user()
@@ -23,7 +24,7 @@ class Payment extends Model
         return $this->belongsTo(User::class);
     }
     public function order()
-{
-    return $this->belongsTo(Order::class);
-}
+    {
+        return $this->belongsTo(Order::class);
+    }
 }

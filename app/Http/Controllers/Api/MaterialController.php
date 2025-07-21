@@ -12,9 +12,11 @@ use Illuminate\Support\Facades\Storage;
 class MaterialController extends Controller
 {
     // Get all materials with relations
+    // In the index method, add status filtering:
     public function index(Request $request)
     {
-        $query = Material::with(['category', 'seller']);
+        $query = Material::with(['category', 'seller'])
+            ->where('status', 'active'); // Add this line
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -36,6 +38,10 @@ class MaterialController extends Controller
 
         if ($request->has('max_price') && $request->max_price !== null) {
             $query->where('price', '<=', $request->max_price);
+        }
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
         }
 
         $materials = $query->orderBy('created_at', 'desc')->paginate(8);
@@ -72,41 +78,34 @@ class MaterialController extends Controller
         return response()->json($materials);
     }
 
-    public function store(Request $request)
-    {
-        // Only sellers can add materials
-        if (Auth::user()->role !== 'seller') {
-            return response()->json(['message' => 'Only sellers can add materials'], 403);
-        }
+ public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:100',
+        'category_id' => 'required|exists:categories,id',
+        'description' => 'nullable|string',
+        'price' => 'required|numeric|min:0',
+        'price_unit' => 'required|string|in:piece,kg,m²,m³',
+        'image_url' => 'nullable|string|max:255', // ← هنا التعديل
+    ]);
 
-        $request->validate([
-            'name' => 'required|string|max:100',
-            'category_id' => 'required|exists:categories,id',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'price_unit' => 'required|string|in:piece,kg,m²,m³',
-            'image_url' => 'nullable|string',
-            'quantity' => 'nullable|integer|min:0'
-        ]);
+    $material = Material::create([
+        'name' => $request->name,
+        'category_id' => $request->category_id,
+        'description' => $request->description,
+        'price' => $request->price,
+        'price_unit' => $request->price_unit,
+        'image_url' => $request->image_url,
+        'quantity' => $request->quantity ?? 1,
+        'seller_id' => Auth::id(),
+    ]);
 
-        $material = Material::create([
-            'name' => $request->name,
-            'category_id' => $request->category_id,
-            'description' => $request->description,
-            'price' => $request->price,
-            'price_unit' => $request->price_unit,
-            'image_url' => $request->image_url,
-            'quantity' => $request->quantity ?? 1,
-            'seller_id' => Auth::id(),
-        ]);
+    return response()->json([
+        'message' => 'Material created successfully',
+        'material' => $material,
+    ]);
+}
 
-        $material->load('category');
-
-        return response()->json([
-            'message' => 'Material added',
-            'data' => $material
-        ], 201);
-    }
 
     // Update material (only by owner seller)
     public function update(Request $request, $id)
@@ -200,7 +199,6 @@ class MaterialController extends Controller
                 'filename' => $filename,
                 'url' => asset('materials/' . $filename)
             ]);
-
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }

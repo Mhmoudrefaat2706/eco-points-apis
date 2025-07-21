@@ -36,16 +36,20 @@ class PayPalService
         throw new \Exception('فشل الحصول على رمز الوصول PayPal: ' . $response->body());
     }
 
-    public function createOrder($amount)
+    public function createOrder($amount, $currency = 'USD')
     {
         $accessToken = $this->getAccessToken();
 
         $url = $this->baseUrl . '/v2/checkout/orders';
         $payload = [
             'intent' => 'CAPTURE',
+            'application_context' => [
+                'return_url' => 'http://localhost:8000/api/paypal/success',
+                'cancel_url' => 'http://localhost:8000/api/paypal/cancel',
+            ],
             'purchase_units' => [[
                 'amount' => [
-                    'currency_code' => 'USD',
+                    'currency_code' => $currency,
                     'value' => number_format($amount, 2, '.', '')
                 ]
             ]]
@@ -54,7 +58,7 @@ class PayPalService
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
             'Authorization' => 'Bearer ' . $accessToken,
-            'PayPal-Request-Id' => uniqid() 
+            'PayPal-Request-Id' => uniqid()
         ])->post($url, $payload);
 
         if ($response->successful()) {
@@ -63,6 +67,7 @@ class PayPalService
 
         throw new \Exception('فشل إنشاء طلب PayPal: ' . $response->body());
     }
+
 
     public function capturePayment($orderId)
     {

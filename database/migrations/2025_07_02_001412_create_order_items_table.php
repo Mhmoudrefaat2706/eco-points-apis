@@ -14,8 +14,10 @@ public function up(): void
     Schema::create('order_items', function (Blueprint $table) {
         $table->id();
         $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
+        $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
         $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
         $table->integer('quantity');
+
         $table->decimal('price', 10, 2);
         $table->timestamps();
     });
