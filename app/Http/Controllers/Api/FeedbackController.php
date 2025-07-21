@@ -37,10 +37,9 @@ class FeedbackController extends Controller
         return response()->json(['message' => 'Feedback added', 'data' => $feedback], 201);
     }
 
-    //  Show all feedbacks for specific seller (from material view)
     public function getSellerFeedback($seller_id)
     {
-        $feedbacks = Feedback::with('buyer')
+        $feedbacks = Feedback::with(['buyer', 'seller']) // Add seller relationship
             ->where('seller_id', $seller_id)
             ->orderByDesc('created_at')
             ->get();
@@ -48,14 +47,13 @@ class FeedbackController extends Controller
         return response()->json($feedbacks);
     }
 
-    //  Show feedbacks for the logged-in seller
     public function myFeedbacks()
     {
         if (Auth::user()->role !== 'seller') {
             return response()->json(['message' => 'Only sellers can view their feedback'], 403);
         }
 
-        $feedbacks = Feedback::with('buyer')
+        $feedbacks = Feedback::with(['buyer', 'seller']) // Add seller relationship
             ->where('seller_id', Auth::id())
             ->orderByDesc('created_at')
             ->get();
