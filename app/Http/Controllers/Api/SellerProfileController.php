@@ -29,26 +29,26 @@ public function update(Request $request)
         'country' => 'nullable|string|max:50',
         'paypal_client_id' => 'nullable|string|max:255',
         'paypal_client_secret' => 'nullable|string|max:255',
+            'profile_image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
     ]);
+if ($request->hasFile('profile_image')) {
+    $filename = uniqid() . '.' . $request->file('profile_image')->getClientOriginalExtension();
+    $request->file('profile_image')->move(public_path('profiles'), $filename);
+    $seller->profile_image = $filename;
+}
 
-    if ($validator->fails()) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Validation error',
-            'errors' => $validator->errors()
-        ], 422);
-    }
+$seller->update($request->only([
+    'first_name', 'last_name', 'address', 'city', 'state',
+    'postal_code', 'country', 'paypal_client_id', 'paypal_client_secret'
+]));
 
-    $seller->update($request->only([
-        'first_name', 'last_name', 'address', 'city', 'state',
-        'postal_code', 'country', 'paypal_client_id', 'paypal_client_secret'
-    ]));
+$seller->save();
 
-    return response()->json([
-        'status' => true,
-        'message' => 'Profile updated successfully.',
-        'user' => $seller
-    ]);
+return response()->json([
+    'status' => true,
+    'message' => 'Profile updated successfully.',
+    'user' => $seller
+]);
 }
 
 

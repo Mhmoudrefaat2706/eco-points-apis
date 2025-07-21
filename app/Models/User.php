@@ -26,7 +26,8 @@ class User extends Authenticatable
         'role',
         'paypal_client_secret',
         'paypal_client_id',
-        'status'
+        'status',
+        'profile_image'
     ];
 
     protected $casts = [
