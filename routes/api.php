@@ -14,6 +14,10 @@ use App\Http\Controllers\Api\AdminController;
 /*------------------------------------------
 | Public Routes (No Authentication Required)
 -------------------------------------------*/
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/seller/orders', [OrderController::class, 'getSellerOrders']);
+    Route::put('/seller/orders/{id}/status', [OrderController::class, 'updateOrderStatus']);
+});
 
 // Authentication
 Route::post('/register', [AuthController::class, 'register']);
