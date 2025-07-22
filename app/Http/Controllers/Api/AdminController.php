@@ -25,7 +25,13 @@ class AdminController extends Controller
                 'created_at'
             ])->get();
 
-            return response()->json($users);
+            // Count admin users
+            $adminCount = User::where('role', 'admin')->count();
+
+            return response()->json([
+                'users' => $users,
+                'admin_count' => $adminCount
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error fetching users',
@@ -53,6 +59,14 @@ class AdminController extends Controller
     public function deleteUser($id)
     {
         $user = User::findOrFail($id);
+
+        // Check if the user is an admin and if it's the last admin
+        if ($user->role === 'admin' && User::where('role', 'admin')->count() <= 1) {
+            return response()->json([
+                'message' => 'Cannot delete the last admin user'
+            ], 422);
+        }
+
         $user->delete();
         return response()->json(['message' => 'User deleted successfully']);
     }
