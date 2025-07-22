@@ -15,6 +15,7 @@ use App\Mail\SellerOrderNotificationMail;
 
 class CartController extends Controller
 {
+    
     public function addToCart(Request $request)
     {
         $request->validate([
@@ -64,7 +65,7 @@ class CartController extends Controller
             'available_stock' => $material->quantity
         ]);
     }
-    
+
     public function removeFromCart($id)
     {
         $cartItem = Cart::where('id', $id)->where('user_id', Auth::id())->first();

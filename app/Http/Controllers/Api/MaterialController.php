@@ -11,12 +11,13 @@ use Illuminate\Support\Facades\Storage;
 
 class MaterialController extends Controller
 {
+
     // Get all materials with relations
     // In the index method, add status filtering:
     public function index(Request $request)
     {
         $query = Material::with(['category', 'seller'])
-            ->where('status', 'active'); // Add this line
+            ->where('status', 'active');
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
@@ -78,33 +79,45 @@ class MaterialController extends Controller
         return response()->json($materials);
     }
 
- public function store(Request $request)
+public function store(Request $request)
 {
+    if (Auth::user()->role !== 'seller') {
+        return response()->json(['message' => 'Only sellers can add materials'], 403);
+    }
+
     $request->validate([
-        'name' => 'required|string|max:100',
+        'name' => 'required|string|max:255',
         'category_id' => 'required|exists:categories,id',
         'description' => 'nullable|string',
-        'price' => 'required|numeric|min:0',
-        'price_unit' => 'required|string|in:piece,kg,m²,m³',
-        'image_url' => 'nullable|string|max:255', // ← هنا التعديل
+        'price' => 'required|numeric',
+        'price_unit' => 'required|string|max:50',
+        'quantity' => 'numeric',
+        'image_url' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
     ]);
 
+    // 1. رفع الصورة (لو موجودة)
+    $filename = null;
+    if ($request->hasFile('image')) {
+        $file = $request->file('image');
+        $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+        $file->move(public_path('materials'), $filename);
+    }
+
+    // 2. إنشاء المادة
     $material = Material::create([
         'name' => $request->name,
         'category_id' => $request->category_id,
         'description' => $request->description,
         'price' => $request->price,
         'price_unit' => $request->price_unit,
-        'image_url' => $request->image_url,
-        'quantity' => $request->quantity ?? 1,
+        'quantity' => $request->quantity??100,
+        'image_url' => $filename,
         'seller_id' => Auth::id(),
     ]);
 
-    return response()->json([
-        'message' => 'Material created successfully',
-        'material' => $material,
-    ]);
+    return response()->json($material, 201);
 }
+
 
 
     // Update material (only by owner seller)
