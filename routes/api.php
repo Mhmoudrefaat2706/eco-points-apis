@@ -10,7 +10,6 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\API\PayPalController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\AdminController;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
 /*------------------------------------------
 | Public Routes (No Authentication Required)
@@ -125,32 +124,4 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::delete('/feedbacks/{id}', [AdminController::class, 'deleteFeedback']);
 });
 
-
-
-// ✅ رابط التفعيل
-Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-    $request->fulfill(); // تفعيل الإيميل
-
-    return response()->json([
-        'status' => true,
-        'message' => 'Email verified successfully.',
-    ]);
-})->middleware(['auth:sanctum', 'signed'])->name('verification.verify');
-
-// ✅ إعادة إرسال رابط التفعيل
-Route::post('/email/verification-notification', function (Request $request) {
-    if ($request->user()->hasVerifiedEmail()) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Email already verified.',
-        ]);
-    }
-
-    $request->user()->sendEmailVerificationNotification();
-
-    return response()->json([
-        'status' => true,
-        'message' => 'Verification link sent!',
-    ]);
-})->middleware(['auth:sanctum', 'throttle:6,1'])->name('verification.send');
-
+Route::put('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('auth:sanctum');
