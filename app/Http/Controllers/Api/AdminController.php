@@ -81,6 +81,9 @@ class AdminController extends Controller
             'role' => 'required|in:seller,buyer,admin'
         ]);
 
+        // Hash the password before creating the user
+        $validated['password'] = bcrypt($validated['password']);
+
         $user = User::create($validated);
         return response()->json($user, 201);
     }
