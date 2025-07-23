@@ -64,7 +64,7 @@ class CartController extends Controller
             'available_stock' => $material->quantity
         ]);
     }
-    
+
     public function removeFromCart($id)
     {
         $cartItem = Cart::where('id', $id)->where('user_id', Auth::id())->first();
@@ -162,5 +162,38 @@ class CartController extends Controller
             DB::rollBack();
             return response()->json(['message' => 'Checkout failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function updateCartItem(Request $request, $id)
+    {
+        $request->validate([
+            'quantity' => 'required|integer|min:1'
+        ]);
+
+        $cartItem = Cart::where('id', $id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$cartItem) {
+            return response()->json(['message' => 'Item not found'], 404);
+        }
+
+        // Check material stock
+        $material = $cartItem->material;
+        if ($material->quantity < $request->quantity) {
+            return response()->json([
+                'message' => 'Not enough stock available',
+                'available_stock' => $material->quantity
+            ], 400);
+        }
+
+        $cartItem->quantity = $request->quantity;
+        $cartItem->save();
+
+        return response()->json([
+            'message' => 'Cart item updated',
+            'cart' => $cartItem,
+            'available_stock' => $material->quantity
+        ]);
     }
 }

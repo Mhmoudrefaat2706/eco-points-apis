@@ -125,3 +125,5 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
 });
 
 Route::put('/orders/{id}/cancel', [OrderController::class, 'cancelOrder'])->middleware('auth:sanctum');
+
+Route::put('/cart/update/{id}', [CartController::class, 'updateCartItem'])->middleware('auth:sanctum');
